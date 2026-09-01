@@ -6,6 +6,7 @@
 
 - [What is Azure API Center?](./#what-is-the-azure-api-center-portal)
 - [What is the Azure API Center Portal?](./#azure-api-center-portal)
+- [Multi-center portal customization](./#multi-center-portal-customization)
 - [Prerequisites](./#prerequisites)
 - [Quick Start](./#quick-start)
   - [Automated deployment using `azd`](./#automated-deployment-using-azd)
@@ -36,6 +37,110 @@ The API Center portal reference implementation provides:
 For free SKU API Center instances, a maximum of 5 APIs will be displayed in the API Center portal regardless of how many APIs are in the API Center.
 
 For standard SKU, there is no limit and all APIs will be displayed.
+
+## Multi-center portal customization
+
+This fork extends the Microsoft Azure API Center Portal Starter into a single portal that can connect to multiple API Center instances.
+
+### What changed
+
+- **Multiple API Centers**: Runtime configuration can define multiple Data API hostnames.
+- **API Center selector**: Users can switch between configured API Centers from the portal header.
+- **Automatic Microsoft Entra SSO**: The portal attempts `ssoSilent()` during startup and falls back to the existing interactive sign-in button when user interaction is required.
+- **App-role filtering**: Each API Center can require a dedicated Entra app role. Centers without a matching role are disabled in the selector.
+- **RBAC enforcement**: App roles control portal navigation while Azure API Center Data Reader assignments remain the authorization boundary for Data API access.
+- **Persistent selection**: The selected API Center is retained in browser local storage. Authorized center IDs are retained for the browser session.
+- **Public-safe defaults**: The repository contains no customer tenant IDs, application IDs, API Center hostnames, shared proxy endpoints, or agent testing endpoints.
+- **Safer OAuth discovery**: Dynamic OAuth client registration endpoints are validated before they can be sent through an optional proxy.
+
+### Authentication and authorization flow
+
+1. The portal loads `src/public/config.json`.
+1. MSAL checks for an account already cached in the current browser tab.
+1. If no account is cached, the portal attempts silent SSO using the existing Microsoft Entra browser session.
+1. If silent SSO cannot complete, the user can sign in interactively.
+1. The portal reads the `roles` claim from the resulting ID token.
+1. The roles are compared with each API Center's `requiredAppRole`.
+1. The selector enables the API Centers assigned to the user.
+1. Data API calls use the shared `https://azure-apicenter.net/Data.Read.All` delegated scope.
+1. Azure RBAC independently determines whether the user can read each API Center inventory.
+
+App-role filtering is a user-experience control, not a replacement for Azure RBAC. Assign the same users or groups the **Azure API Center Data Reader** role on each API Center resource they are permitted to access.
+
+### Microsoft Entra application setup
+
+Use a dedicated single-tenant SPA application registration for the multi-center portal.
+
+1. Add the local SPA redirect URI:
+
+   ```text
+   http://localhost:5173
+   ```
+
+1. Add the production redirect URI before deployment.
+1. Add the delegated **Azure API Center** permission named **Access Azure API Center Data API**. The permission can appear as `user_impersonation` in the portal while the requested runtime scope is `https://azure-apicenter.net/Data.Read.All`.
+1. Define one app role for each API Center. Example role values:
+
+   ```text
+   ApiCenter.EastUS
+   ApiCenter.SwedenCentral
+   ApiCenter.WestEurope
+   ```
+
+1. Open the corresponding **Enterprise application**, select **Users and groups**, and assign users or groups to the appropriate roles.
+1. Assign those users or groups **Azure API Center Data Reader** on the corresponding API Center resources.
+1. Disable anonymous portal access on API Centers that must be protected by RBAC.
+
+For production, prefer assigning Entra groups rather than individual users. App roles are defined on the App Registration but user and group assignments are managed through the Enterprise application.
+
+### Multi-center runtime configuration
+
+Copy `config.example.json` to `src/public/config.json` and provide environment-specific values:
+
+```json
+{
+  "title": "API Center Explorer",
+  "apiCenters": [
+    {
+      "id": "primary",
+      "title": "Primary API Center",
+      "dataApiHostName": "<service-name>.data.<region>.azure-apicenter.ms",
+      "requiredAppRole": "ApiCenter.Primary"
+    },
+    {
+      "id": "secondary",
+      "title": "Secondary API Center",
+      "dataApiHostName": "<service-name>.data.<region>.azure-apicenter.ms",
+      "requiredAppRole": "ApiCenter.Secondary"
+    }
+  ],
+  "defaultApiCenterId": "primary",
+  "authentication": {
+    "clientId": "<application-client-id>",
+    "tenantId": "<tenant-id>",
+    "scopes": [
+      "https://azure-apicenter.net/Data.Read.All"
+    ],
+    "authority": "https://login.microsoftonline.com/",
+    "azureAdInstance": "https://login.microsoftonline.com/"
+  },
+  "capabilities": [
+    "semanticSearch"
+  ]
+}
+```
+
+The runtime `config.json` is ignored by Git. Although client IDs and tenant IDs are public OAuth identifiers rather than secrets, keeping this file untracked prevents customer-specific resource names and deployment metadata from being published.
+
+### Optional customer-owned backends
+
+The upstream starter contained shared proxy and agent-testing endpoints. This fork removes those defaults.
+
+- Set `corsProxyEndpoint` only when the customer has deployed and secured its own HTTPS proxy.
+- Set `agent.endpoint` only when the customer has deployed its own agent backend.
+- If these values are omitted, the corresponding features remain disabled.
+
+Never configure a proxy owned by another organization because test requests can contain Azure tokens, API keys, OAuth credentials, headers, and request bodies.
 
 ## Prerequisites
 
@@ -145,51 +250,39 @@ For a full list of filterable properties, refer to the dataplane [API resource m
 
 Follow these steps to get your development environment set up:
 
-1. Clone the repository
+1. Clone your fork:
 
     ```bash
-    git clone https://github.com/Azure/APICenter-Portal-Starter.git
+    git clone https://github.com/<YOUR_GITHUB_ALIAS>/APICenter-Portal-Starter.git
+    cd APICenter-Portal-Starter
     ```
 
-1. Switch to main branch:
+1. Create the ignored runtime configuration:
+
+   ```bash
+   cp config.example.json src/public/config.json
+   ```
+
+1. Edit `src/public/config.json` with the SPA client ID, tenant ID, API Center Data API hostnames, and app-role values for the target environment.
+
+1. Install the required packages:
 
     ```bash
-    git checkout main
+    npm ci
     ```
 
-1. Copy or rename the `public/config.example` file to the `public/config.json`.
-1. Configure the `public/config.json` file to point to your Azure API Center service. Here’s an example configuration:
-
-    ```JSON
-    {
-      "dataApiHostName": "<service name>.data.<region>.azure-apicenter.ms",
-      "title": "API portal",
-      "authentication": {
-          "clientId": "<client ID>",
-          "tenantId": "<tenant ID>",
-          "scopes": ["https://azure-apicenter.net/user_impersonation"],
-          "authority": "https://login.microsoftonline.com/"
-      }
-    }
-    ```
-
-1. Login to GitHub package registry (use PAT for password):
-  
-      ```bash
-      npm login --registry=https://npm.pkg.github.com
-      ```
-
-1. Install the required packages.
-
-    ```bash
-    npm install
-    ```
-
-1. Start the development server - This command will start the portal in development mode running locally:
+1. Start the development server:
 
    ```bash
    npm start
    ```
+
+1. Open [http://localhost:5173](http://localhost:5173).
+1. Sign in with a user assigned to at least one of the configured app roles.
+1. Confirm that assigned API Centers are enabled and unassigned centers are marked **no access**.
+1. Switch between enabled API Centers and verify that each inventory loads.
+
+The Vite development server uses port `5173` with strict port selection so the URL matches the registered local SPA redirect URI.
 
 ### Manual deployment to Azure Static Web Apps
 
