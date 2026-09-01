@@ -42,6 +42,17 @@ For standard SKU, there is no limit and all APIs will be displayed.
 
 This fork extends the Microsoft Azure API Center Portal Starter into a single portal that can connect to multiple API Center instances.
 
+### Customer setup requirements
+
+Before using this portal, the customer must:
+
+- Create or provide a dedicated Microsoft Entra SPA App Registration for the custom portal.
+- Define an app role for each API Center that will appear in the portal.
+- Assign the appropriate users or groups to those roles through the App Registration's corresponding Enterprise application.
+- Grant each signed-in user, or a group containing that user, the **Azure API Center Data Reader** RBAC role on every API Center whose inventory they need to view.
+
+App-role assignments determine which API Centers are enabled in the portal selector. The Azure API Center Data Reader role controls whether the signed-in user can retrieve and view the complete API Center inventory.
+
 ### What changed
 
 - **Multiple API Centers**: Runtime configuration can define multiple Data API hostnames.
