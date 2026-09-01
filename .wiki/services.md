@@ -119,6 +119,8 @@ const makeRequestWithCache = memoizee(makeRequest);
 **Interface**: `IAuthService`
 **Purpose**: Azure AD authentication via MSAL
 
+Authentication-state initialization reuses a cached account or attempts `ssoSilent()` before requiring interactive sign-in. `HttpService` continues to read the active `dataApiHostName` from runtime configuration; multi-center selection resolves that hostname before the application router is initialized.
+
 #### Methods
 
 | Method | Purpose | Returns |

@@ -11,6 +11,7 @@ import McpServerDetailPage from '@/pages/McpServerDetailPage';
 import ModelDetailPage from '@/pages/ModelDetailPage';
 import { ModelPlayground } from '@/pages/ModelPlayground';
 import { configAtom } from '@/atoms/configAtom';
+import { resolveConfig } from '@/config/apiCenterSelection';
 import Layout from './Layout';
 
 const App: React.FC = () => {
@@ -80,11 +81,7 @@ const App: React.FC = () => {
       throw new Error('Failed to fetch config');
     }
     const config = await response.json();
-    setConfig({
-      title: 'API portal',
-      capabilities: [],
-      ...config,
-    });
+    setConfig(resolveConfig(config));
     setIsInitialized(true);
   }, [isInitialized, setConfig]);
 

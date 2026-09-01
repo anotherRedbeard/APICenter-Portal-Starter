@@ -1,5 +1,8 @@
 import { atom } from 'recoil';
 import { appServicesAtom } from '@/atoms/appServicesAtom';
+import { configAtom } from '@/atoms/configAtom';
+import { refreshApiCenterAccess } from '@/services/ApiCenterAccessService';
+import { Config } from '@/types/config';
 import { IAuthService } from '@/types/services/IAuthService';
 
 export const isAuthenticatedAtom = atom<boolean>({
@@ -18,7 +21,16 @@ export const isAuthenticatedAtom = atom<boolean>({
 
         auth
           .isAuthenticated()
-          .then(setSelf)
+          .then(async (isAuthenticated) => {
+            if (!isAuthenticated) {
+              setSelf(false);
+              return;
+            }
+
+            const config = getLoadable(configAtom).contents as Config;
+            await refreshApiCenterAccess(auth, config);
+            setSelf(true);
+          })
           .catch(() => setSelf(false));
       };
 

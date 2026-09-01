@@ -18,7 +18,7 @@
     display: flex;
     align-items: center;
     color: inherit;
-    
+
     span {
       white-space: nowrap;
     }
@@ -47,6 +47,20 @@
     align-items: center;
     margin-left: 16px;
     gap: 8px;
+  }
+
+  .apiCenterPicker {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .apiCenterSelect {
+      min-width: 210px;
+
+      @include screen.small {
+        min-width: 160px;
+      }
+    }
   }
 
   .auth {

@@ -55,9 +55,23 @@ export const MsalAuthService = {
 
     const config = getAuthConfig();
     const msalInstance = await getMsalInstance(config);
-    const accounts = msalInstance.getAllAccounts();
+    const cachedAccount = msalInstance.getActiveAccount() ?? msalInstance.getAllAccounts()[0];
+    if (cachedAccount) {
+      msalInstance.setActiveAccount(cachedAccount);
+      return true;
+    }
 
-    return accounts.length > 0;
+    try {
+      const authResult = await msalInstance.ssoSilent({ scopes: config.scopes });
+      msalInstance.setActiveAccount(authResult.account);
+      return true;
+    } catch (error) {
+      if (error instanceof msal.InteractionRequiredAuthError) {
+        return false;
+      }
+
+      throw error;
+    }
   },
 
   async getAccessToken(): Promise<string> {
@@ -70,6 +84,19 @@ export const MsalAuthService = {
     const authResult = await msalInstance.acquireTokenSilent({ scopes: config.scopes });
 
     return authResult.accessToken;
+  },
+
+  async getUserRoles(): Promise<string[]> {
+    if (getRecoil(isAnonymousAccessEnabledAtom)) {
+      return [];
+    }
+
+    const config = getAuthConfig();
+    const msalInstance = await getMsalInstance(config);
+    const account = msalInstance.getActiveAccount() ?? msalInstance.getAllAccounts()[0];
+    const roles = account?.idTokenClaims?.roles;
+
+    return Array.isArray(roles) ? roles.filter((role): role is string => typeof role === 'string') : [];
   },
 
   async signIn(): Promise<void> {

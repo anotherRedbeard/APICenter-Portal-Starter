@@ -4,6 +4,26 @@
 
 The application uses a **runtime configuration** approach via `config.json`, allowing deployment-time customization without rebuilding. Configuration is fetched on app startup and drives service initialization, authentication mode, and feature availability.
 
+For a single API Center, set `dataApiHostName`. To expose multiple API Centers from one portal, configure `apiCenters` and optionally `defaultApiCenterId`. The selected API Center ID is stored in browser local storage, and changing the selection reloads the portal so API queries and caches are recreated against the selected Data API host.
+
+Set `requiredAppRole` to the role value defined by the portal's Entra app registration. The center appears only when that value is present in the signed-in user's `roles` claim.
+
+The optional `corsProxyEndpoint` and `agent.endpoint` settings must reference infrastructure owned by the deploying customer. Both features are disabled when their endpoint is omitted; the repository does not provide shared proxy or agent backends.
+
+```json
+{
+  "apiCenters": [
+    {
+      "id": "primary",
+      "title": "Primary API Center",
+      "dataApiHostName": "primary.data.region.azure-apicenter.ms",
+      "requiredAppRole": "ApiCenter.Primary"
+    }
+  ],
+  "defaultApiCenterId": "primary"
+}
+```
+
 ---
 
 ## Configuration File

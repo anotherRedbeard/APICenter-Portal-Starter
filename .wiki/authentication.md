@@ -21,6 +21,10 @@
 **Service**: `MsalAuthService`
 **Library**: `@azure/msal-browser` v3.13.0
 
+At startup, the portal first uses an account already cached in the current tab. If no account is cached, it calls `ssoSilent()` so an existing Microsoft Entra browser session can authenticate the portal without an extra button click. When interaction is required, the normal Sign in button remains available and uses `loginPopup()`.
+
+After authentication, the portal reads app-role values from the ID token's `roles` claim. Each API Center can specify a `requiredAppRole`; only centers matching the signed-in user's enterprise-application assignments are shown in the selector. Azure RBAC remains the security boundary for Data API access.
+
 ---
 
 ### 2. Anonymous Mode

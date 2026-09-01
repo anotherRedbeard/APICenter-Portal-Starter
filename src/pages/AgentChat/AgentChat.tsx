@@ -9,13 +9,13 @@ import {
   ChatRegular,
 } from '@fluentui/react-icons';
 import { Link, useParams } from 'react-router-dom';
+import { useRecoilValue } from 'recoil';
+import { configAtom } from '@/atoms/configAtom';
 import { LocationsService } from '@/services/LocationsService';
 import { useApi } from '@/hooks/useApi';
 import { getLifecycleBadgeColor, formatLifecycleStage } from '@/utils/badgeSystem';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
 import styles from './AgentChat.module.scss';
-
-const AGENT_ENDPOINT = 'https://apimsynctesting.azure-api.net/comms-agent/responses';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -100,6 +100,8 @@ enum AgentTabs {
 
 export const AgentChat: React.FC = () => {
   const { name } = useParams<{ name: string }>();
+  const config = useRecoilValue(configAtom);
+  const agentEndpoint = config.agent?.endpoint;
   const api = useApi(name);
   const [activeTab, setActiveTab] = useState<AgentTabs>(AgentTabs.PLAYGROUND);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -126,7 +128,7 @@ export const AgentChat: React.FC = () => {
 
   const sendMessage = useCallback(async () => {
     const trimmed = input.trim();
-    if (!trimmed || isLoading) return;
+    if (!trimmed || isLoading || !agentEndpoint) return;
 
     const userMessage: ChatMessage = { role: 'user', content: trimmed, timestamp: new Date() };
     setMessages((prev) => [...prev, userMessage]);
@@ -136,7 +138,7 @@ export const AgentChat: React.FC = () => {
     setMessages((prev) => [...prev, { role: 'assistant', content: '', timestamp: new Date() }]);
 
     try {
-      const response = await fetch(AGENT_ENDPOINT, {
+      const response = await fetch(agentEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -175,7 +177,7 @@ export const AgentChat: React.FC = () => {
       });
       setIsLoading(false);
     }
-  }, [input, isLoading]);
+  }, [agentEndpoint, input, isLoading]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -224,7 +226,9 @@ export const AgentChat: React.FC = () => {
           <div className={styles.messages}>
             {messages.length === 0 && (
               <div className={styles.emptyState}>
-                Start a conversation with the agent. Ask anything about its capabilities.
+                {agentEndpoint
+                  ? 'Start a conversation with the agent. Ask anything about its capabilities.'
+                  : 'Agent chat is disabled until a customer-owned agent endpoint is configured.'}
               </div>
             )}
             {messages.map((msg, i) =>
@@ -276,8 +280,8 @@ export const AgentChat: React.FC = () => {
                 value={input}
                 onChange={(_, data) => { setInput(data.value); autoGrow(); }}
                 onKeyDown={handleKeyDown}
-                placeholder="Send a message..."
-                disabled={isLoading}
+                placeholder={agentEndpoint ? 'Send a message...' : 'Agent chat endpoint is not configured'}
+                disabled={isLoading || !agentEndpoint}
                 resize="none"
               />
               <Button
@@ -285,7 +289,7 @@ export const AgentChat: React.FC = () => {
                 appearance="transparent"
                 icon={<ArrowRight24Regular />}
                 onClick={() => void sendMessage()}
-                disabled={!input.trim() || isLoading}
+                disabled={!input.trim() || isLoading || !agentEndpoint}
               />
             </div>
             <p className={styles.disclaimer}>

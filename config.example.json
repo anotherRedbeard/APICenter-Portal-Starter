@@ -1,14 +1,28 @@
 {
-  "dataApiHostName": "<service name>.data.<region>.azure-apicenter.ms",
-  "title": "API portal",
+  "title": "API Center Explorer",
+  "apiCenters": [
+    {
+      "id": "primary",
+      "title": "Primary API Center",
+      "dataApiHostName": "<primary service>.data.<region>.azure-apicenter.ms",
+      "requiredAppRole": "ApiCenter.Primary"
+    },
+    {
+      "id": "secondary",
+      "title": "Secondary API Center",
+      "dataApiHostName": "<secondary service>.data.<region>.azure-apicenter.ms",
+      "requiredAppRole": "ApiCenter.Secondary"
+    }
+  ],
+  "defaultApiCenterId": "primary",
   "authentication": {
-      "clientId": "<client ID>",
-      "tenantId": "<tenant ID>",
-      "scopes": ["https://azure-apicenter.net/Data.Read.All"],
-      "authority": "https://login.microsoftonline.com/"
+    "clientId": "<client ID>",
+    "tenantId": "<tenant ID>",
+    "scopes": ["https://azure-apicenter.net/Data.Read.All"],
+    "authority": "https://login.microsoftonline.com/"
   },
   "mcp": {
-      "useCorsProxy": false,
-      "enableEntraIdAuth": false
+    "useCorsProxy": false,
+    "enableEntraIdAuth": false
   }
 }
